@@ -68,54 +68,48 @@ PROMPT_SECTIONS = {
     "Migration Advice": migration_assistance_prompt,
     "Visa Processing Guidance": visa_processing_prompt,
 }
-
-
 class UploadCvView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-
         user = request.user
-        
-        cv_file = request.FILES.get('cv_file')
+        cv_file = request.FILES.get('cv_file', None)
         message = request.data.get('message', '')
-        # print(message)
 
+        # Generate response based on user message
         rag_chain = build_rag_chain(university_recommendation_prompt)
-        response = rag_chain.invoke({"input": message})
+        userMessageResponse = rag_chain.invoke({"input": message})
 
-
-        file_name = secure_filename(cv_file.name)
-
-        # Save uploaded file to a temporary location
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp:
-            for chunk in cv_file.chunks():
-                tmp.write(chunk)
-            tmp_path = tmp.name  # Store the path to the temp file
-
-        # Now use the temp file for processing
-        raw_text = extract_text_from_cv(tmp_path)
-
-        # Extract structured info using the LLM chain
-        response = cv_extract_chain.invoke({"cv_text": raw_text})
-        structured_info = response["text"]
-
-        # Save extracted info as JSON (optional for debugging)
-        json_path = f"StudentData/cv_data_{uuid.uuid4().hex}.json"
-        os.makedirs(os.path.dirname(json_path), exist_ok=True)  # Make sure the directory exists
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump({"cv_text": raw_text, "structured_info": structured_info}, f)
-
-       
-        # Prepare multiple RAG responses
+        structured_info = None
         pdf_sections = []
-        for title, prompt in PROMPT_SECTIONS.items():
-            rag_chain = build_rag_chain(prompt)
-            result = rag_chain.invoke({"input": structured_info})
-            pdf_sections.append((title, result["answer"]))
-            
-        
 
+        if cv_file:
+            file_name = secure_filename(cv_file.name)
+
+            # Save uploaded file to a temporary location
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp:
+                for chunk in cv_file.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+
+            # Extract raw text and structured info from CV
+            raw_text = extract_text_from_cv(tmp_path)
+            response = cv_extract_chain.invoke({"cv_text": raw_text})
+            structured_info = response["text"]
+
+            # Save for debugging or future analysis
+            json_path = f"StudentData/cv_data_{uuid.uuid4().hex}.json"
+            os.makedirs(os.path.dirname(json_path), exist_ok=True)
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump({"cv_text": raw_text, "structured_info": structured_info}, f)
+
+            # Run all RAG prompts using the extracted CV data
+            for title, prompt in PROMPT_SECTIONS.items():
+                rag_chain = build_rag_chain(prompt)
+                result = rag_chain.invoke({"input": structured_info})
+                pdf_sections.append((title, result["answer"]))
+
+        # Save or update user information
         try:
             user_info = UserInformation.objects.get(custom_user=user)
             serializer = UploadCvSerializer(user_info, data=request.data, partial=True)
@@ -124,11 +118,16 @@ class UploadCvView(APIView):
 
         serializer.is_valid(raise_exception=True)
         serializer.save(custom_user=request.user)
-        return Response({
-            "cv_extracted_info": structured_info,
-            "recommendations": {
+
+        # Prepare dynamic response
+        response_data = {
+            "response": userMessageResponse
+        }
+
+        if structured_info:
+            response_data["cv_extracted_info"] = structured_info
+            response_data["recommendations"] = {
                 title: answer for title, answer in pdf_sections
             }
-        }, status=status.HTTP_200_OK)
 
-
+        return Response(response_data, status=status.HTTP_200_OK)
