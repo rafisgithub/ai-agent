@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.users',
     'rest_framework',
     'rest_framework_simplejwt',
+    'apps.users_information',
 ]
 
 MIDDLEWARE = [
@@ -137,8 +138,11 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
+import os
 
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -191,6 +195,39 @@ UNFOLD = {
                         "link": reverse_lazy("admin:users_customuser_changelist"),
                         "permission": lambda request: request.user.is_superuser,
                         
+                    },
+                    {
+                        "title": _("User Information"),
+                        "icon": "info",
+                        "link": reverse_lazy("admin:users_information_userinformation_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                ],
+            },
+            {
+                "title": _("User Management"),
+                "separator": True,  # Top border
+                "collapsible": True,  # Collapsible group of links
+                "items": [
+                    {
+                        "title": _("Dashboard"),
+                        "icon": "dashboard",
+                        "link": reverse_lazy("admin:index"),
+                        "permission": lambda request: request.user.is_superuser,
+
+                    },
+                    {
+                        "title": _("Users"),
+                        "icon": "people",
+                        "link": reverse_lazy("admin:users_customuser_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                        
+                    },
+                    {
+                        "title": _("User Information"),
+                        "icon": "info",
+                        "link": reverse_lazy("admin:users_information_userinformation_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
                     },
                 ],
             },
