@@ -26,12 +26,11 @@ import re
 from werkzeug.utils import secure_filename
 
 
-load_dotenv()
+# load_dotenv()
 # Load API Keys
-PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+# PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
+# OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+
 
 
 # Set up embeddings and vector store
